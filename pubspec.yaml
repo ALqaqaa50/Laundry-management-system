@@ -1,0 +1,33 @@
+name: laundry_management
+description: "Professional Laundry Management System for carpet and blankets laundry shops."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  sqflite: ^2.4.2
+  path: ^1.9.1
+  path_provider: ^2.1.5
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^6.0.5
+  intl: ^0.20.2
+  fl_chart: ^0.70.2
+  uuid: ^4.5.1
+  image_picker: ^1.1.2
+  pdf: ^3.11.3
+  printing: ^5.13.5
+  provider: ^6.1.2
+  share_plus: ^10.1.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
