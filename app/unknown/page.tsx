@@ -103,6 +103,8 @@ export default function UnknownPartPage() {
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [requestId, setRequestId] = useState('');
+  const [apiError, setApiError] = useState('');
 
   const toggleSymptom = (s: string) =>
     setSelectedSymptoms((prev) =>
@@ -118,9 +120,46 @@ export default function UnknownPartPage() {
 
   const handleSubmit = async () => {
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 900));
-    setSubmitting(false);
-    setDone(true);
+    setApiError('');
+
+    try {
+      const res = await fetch('/api/quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source: 'unknown-part-form',
+          customerName: name,
+          phone,
+          city,
+          deviceType: deviceType || null,
+          deviceBrand: null,
+          deviceModel: null,
+          partId: null,
+          partNameAR: null,
+          partNameEN: null,
+          partNumber: null,
+          faultDescription: faultText,
+          symptoms: selectedSymptoms,
+          notes: null,
+          imageNames: partImages.map((f) => f.name),
+          nameplateImageNames: nameplateImages.map((f) => f.name),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setApiError(data.error ?? 'حدث خطأ، حاول مجدداً');
+        return;
+      }
+
+      setRequestId(data.requestId);
+      setDone(true);
+    } catch {
+      setApiError('تعذّر الاتصال بالخادم، تحقق من اتصالك وحاول مجدداً');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (done) {
@@ -133,23 +172,36 @@ export default function UnknownPartPage() {
               <Check className="w-8 h-8 text-green-600" />
             </div>
             <h2 className="text-2xl font-extrabold text-slate-900 mb-2">شكراً!</h2>
+
+            {/* Request ID */}
+            <div className="bg-brand-50 border border-brand-200 rounded-xl px-4 py-3 mb-4 inline-block">
+              <p className="text-xs text-brand-600 mb-0.5">رقم طلبك</p>
+              <p className="font-mono font-bold text-brand-900 text-lg tracking-widest">{requestId}</p>
+            </div>
+
             <p className="text-slate-600 text-sm leading-relaxed mb-6">
-              استلمنا طلبك. سيقوم فريقنا بمراجعة المعلومات والتواصل معك على الرقم{' '}
-              <strong>{phone}</strong> في أقرب وقت لتحديد القطعة المناسبة.
+              استلمنا طلبك بنجاح. سيراجع فريقنا المعلومات ويتواصل معك على الرقم{' '}
+              <strong dir="ltr" className="inline-block">{phone}</strong> لتحديد القطعة المناسبة.
             </p>
+
+            {(partImages.length > 0 || nameplateImages.length > 0) && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-sm text-amber-800 text-right">
+                تم تسجيل ({partImages.length + nameplateImages.length}) صورة. احتفظ بها لإرسالها عند الطلب.
+              </div>
+            )}
+
             <div className="flex flex-col gap-3">
-              <a
-                href="https://wa.me/"
-                className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold px-4 py-3 rounded-xl transition-colors"
-              >
-                <Phone className="w-4 h-4" />
-                تواصل عبر واتساب
-              </a>
               <Link
                 href="/parts"
-                className="border border-slate-300 text-slate-700 px-4 py-3 rounded-xl hover:bg-slate-50 transition-colors text-sm"
+                className="flex items-center justify-center gap-2 bg-brand-900 hover:bg-brand-800 text-white font-bold px-4 py-3 rounded-xl transition-colors"
               >
                 ابحث في الكتالوج
+              </Link>
+              <Link
+                href="/quote"
+                className="border border-slate-300 text-slate-700 px-4 py-3 rounded-xl hover:bg-slate-50 transition-colors text-sm"
+              >
+                إرسال طلب آخر
               </Link>
             </div>
           </div>
@@ -383,6 +435,13 @@ export default function UnknownPartPage() {
             </button>
           )}
         </div>
+
+        {/* API error */}
+        {apiError && (
+          <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700 text-center">
+            {apiError}
+          </div>
+        )}
 
         {/* Skip to catalog */}
         <div className="text-center mt-6">

@@ -89,6 +89,8 @@ function QuoteContent() {
 
   const [step, setStep] = useState<'form' | 'success'>('form');
   const [submitting, setSubmitting] = useState(false);
+  const [requestId, setRequestId] = useState('');
+  const [apiError, setApiError] = useState('');
 
   const [form, setForm] = useState({
     customerName: '',
@@ -122,9 +124,50 @@ function QuoteContent() {
     e.preventDefault();
     if (!validate()) return;
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 900));
-    setSubmitting(false);
-    setStep('success');
+    setApiError('');
+
+    try {
+      const res = await fetch('/api/quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source: 'quote-form',
+          customerName: form.customerName,
+          phone: form.phone,
+          city: form.city,
+          deviceType: form.deviceType,
+          deviceBrand: form.deviceBrand,
+          deviceModel: form.deviceModel,
+          partId: prefillPartId || null,
+          partNameAR: form.partNameAR,
+          partNameEN: form.partNameEN,
+          partNumber: form.partNumber,
+          faultDescription: form.faultDescription,
+          symptoms: [],
+          notes: form.notes,
+          imageNames: partImages.map((f) => f.name),
+          nameplateImageNames: nameplateImages.map((f) => f.name),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        if (data.errors) {
+          setErrors(data.errors);
+        } else {
+          setApiError(data.error ?? 'حدث خطأ، حاول مجدداً');
+        }
+        return;
+      }
+
+      setRequestId(data.requestId);
+      setStep('success');
+    } catch {
+      setApiError('تعذّر الاتصال بالخادم، تحقق من اتصالك وحاول مجدداً');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const set = (key: keyof typeof form, val: string) =>
@@ -138,28 +181,30 @@ function QuoteContent() {
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
           <h2 className="text-2xl font-extrabold text-slate-900 mb-2">تم استلام طلبك!</h2>
+
+          {/* Request ID */}
+          <div className="bg-brand-50 border border-brand-200 rounded-xl px-4 py-3 mb-4 inline-block">
+            <p className="text-xs text-brand-600 mb-0.5">رقم طلبك</p>
+            <p className="font-mono font-bold text-brand-900 text-lg tracking-widest">{requestId}</p>
+          </div>
+
           <p className="text-slate-600 text-sm leading-relaxed mb-6">
-            شكراً <strong>{form.customerName}</strong>، سيتم مراجعة طلبك والتواصل معك على الرقم{' '}
-            <strong>{form.phone}</strong> في أقرب وقت ممكن.
+            شكراً <strong>{form.customerName}</strong>، تم تسجيل طلبك بنجاح.
+            سيتم مراجعته والتواصل معك على الرقم{' '}
+            <strong dir="ltr" className="inline-block">{form.phone}</strong> في أقرب وقت ممكن.
           </p>
 
           {(partImages.length > 0 || nameplateImages.length > 0) && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-sm text-amber-800 text-right">
-              <strong>ملاحظة:</strong> الصور التي رفعتها محفوظة لديك. يمكن إرسالها عبر واتساب عند التواصل.
+              <strong>ملاحظة بشأن الصور:</strong> تم تسجيل أسماء الصور ({partImages.length + nameplateImages.length} صورة).
+              احتفظ بها لإرسالها عند طلبها منك.
             </div>
           )}
 
           <div className="flex flex-col gap-3">
-            <a
-              href="https://wa.me/"
-              className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold px-4 py-3 rounded-xl transition-colors"
-            >
-              <Phone className="w-4 h-4" />
-              تواصل عبر واتساب
-            </a>
             <Link
               href="/parts"
-              className="flex items-center justify-center gap-2 border border-slate-300 text-slate-700 px-4 py-3 rounded-xl hover:bg-slate-50 transition-colors text-sm"
+              className="flex items-center justify-center gap-2 bg-brand-900 hover:bg-brand-800 text-white font-bold px-4 py-3 rounded-xl transition-colors"
             >
               <ArrowRight className="w-4 h-4" />
               العودة للكتالوج
@@ -367,6 +412,13 @@ function QuoteContent() {
             className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600 resize-none"
           />
         </div>
+
+        {/* API error */}
+        {apiError && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700 text-center">
+            {apiError}
+          </div>
+        )}
 
         {/* Submit */}
         <button
