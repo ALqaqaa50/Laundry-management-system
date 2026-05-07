@@ -14,6 +14,15 @@ type QuoteStatus =
   | 'new' | 'reviewing' | 'quoted'
   | 'waiting_customer' | 'ordered' | 'completed' | 'rejected';
 
+interface ImageMeta {
+  originalName: string;
+  storedName: string;
+  url: string;
+  size: number;
+  type: string;
+  uploadedAt: string;
+}
+
 interface QuoteRecord {
   requestId: string;
   source: 'quote-form' | 'unknown-part-form';
@@ -30,8 +39,8 @@ interface QuoteRecord {
   faultDescription: string | null;
   symptoms: string[];
   notes: string | null;
-  imageNames: string[];
-  nameplateImageNames: string[];
+  images: ImageMeta[];
+  nameplateImages: ImageMeta[];
   createdAt: string;
   updatedAt?: string;
 }
@@ -513,9 +522,9 @@ function RequestRow({
           <span className="font-mono text-xs text-brand-700 bg-brand-50 px-2 py-0.5 rounded">
             {record.requestId}
           </span>
-          {(record.imageNames.length > 0 || record.nameplateImageNames.length > 0) && (
+          {(record.images.length > 0 || record.nameplateImages.length > 0) && (
             <span className="mr-1.5 text-xs text-slate-400" title="يوجد صور">
-              📎 {record.imageNames.length + record.nameplateImageNames.length}
+              📎 {record.images.length + record.nameplateImages.length}
             </span>
           )}
         </td>
@@ -629,20 +638,60 @@ function RequestRow({
                 </div>
               )}
 
-              {/* Images */}
-              {(record.imageNames.length > 0 || record.nameplateImageNames.length > 0) && (
-                <div>
-                  <p className="font-semibold text-slate-600 mb-1">الصور المطلوبة</p>
-                  {record.imageNames.length > 0 && (
-                    <div className="mb-1">
-                      <span className="text-slate-500">صور القطعة: </span>
-                      {record.imageNames.join('، ')}
+              {/* Image thumbnails */}
+              {(record.images.length > 0 || record.nameplateImages.length > 0) && (
+                <div className="lg:col-span-3">
+                  <p className="font-semibold text-slate-600 mb-2">الصور المرفوعة</p>
+                  {record.images.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-xs text-slate-500 mb-2">
+                        صور القطعة ({record.images.length})
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {record.images.map((img, i) => (
+                          <a
+                            key={i}
+                            href={img.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={img.originalName}
+                            className="flex-shrink-0"
+                          >
+                            <img
+                              src={img.url}
+                              alt={img.originalName}
+                              className="w-20 h-20 object-cover rounded-lg border border-slate-200 hover:border-brand-400 transition-colors"
+                              loading="lazy"
+                            />
+                          </a>
+                        ))}
+                      </div>
                     </div>
                   )}
-                  {record.nameplateImageNames.length > 0 && (
+                  {record.nameplateImages.length > 0 && (
                     <div>
-                      <span className="text-slate-500">صور اللوحة: </span>
-                      {record.nameplateImageNames.join('، ')}
+                      <p className="text-xs text-slate-500 mb-2">
+                        صور لوحة البيانات ({record.nameplateImages.length})
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {record.nameplateImages.map((img, i) => (
+                          <a
+                            key={i}
+                            href={img.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={img.originalName}
+                            className="flex-shrink-0"
+                          >
+                            <img
+                              src={img.url}
+                              alt={img.originalName}
+                              className="w-20 h-20 object-cover rounded-lg border border-slate-200 hover:border-brand-400 transition-colors"
+                              loading="lazy"
+                            />
+                          </a>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

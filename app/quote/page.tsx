@@ -3,16 +3,41 @@
 import { useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import {
-  Upload, X, CheckCircle, Phone, ArrowRight, Camera, FileText
-} from 'lucide-react';
+import { Upload, X, CheckCircle, Phone, ArrowRight, Camera, FileText } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { DEVICE_LABELS, DeviceType } from '@/types';
+import { DEVICE_LABELS, DeviceType, ImageMeta } from '@/types';
+
+const MAX_IMAGES = 5;
+const MAX_SIZE = 5 * 1024 * 1024;
+const ALLOWED_MIME = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const ALLOWED_EXT = ['jpg', 'jpeg', 'png', 'webp'];
 
 const deviceTypes = Object.keys(DEVICE_LABELS) as DeviceType[];
-
 const CITIES = ['مسقط', 'صلالة', 'صحار', 'نزوى', 'صور', 'عبري', 'البريمي', 'الرستاق', 'السيب', 'أخرى'];
+
+function validateFiles(incoming: File[], existing: File[]): string | null {
+  if (existing.length + incoming.length > MAX_IMAGES)
+    return `لا يمكن إضافة أكثر من ${MAX_IMAGES} صور في هذا الحقل`;
+  for (const f of incoming) {
+    const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
+    if (!ALLOWED_MIME.includes(f.type) || !ALLOWED_EXT.includes(ext))
+      return `نوع الملف "${f.name}" غير مسموح. الأنواع المقبولة: JPG, JPEG, PNG, WEBP`;
+    if (f.size > MAX_SIZE)
+      return `حجم الصورة "${f.name}" يتجاوز الحد الأقصى (5MB)`;
+  }
+  return null;
+}
+
+async function uploadFiles(files: File[]): Promise<ImageMeta[]> {
+  if (files.length === 0) return [];
+  const fd = new FormData();
+  files.forEach((f) => fd.append('files', f));
+  const res = await fetch('/api/upload', { method: 'POST', body: fd });
+  const data = await res.json();
+  if (!res.ok || !data.success) throw new Error(data.error ?? 'فشل رفع الصور');
+  return data.files as ImageMeta[];
+}
 
 function ImageUploadSlot({
   label,
@@ -28,11 +53,16 @@ function ImageUploadSlot({
   onRemove: (index: number) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files ?? []);
-    onAdd(selected);
     if (inputRef.current) inputRef.current.value = '';
+    if (selected.length === 0) return;
+    const err = validateFiles(selected, files);
+    if (err) { setError(err); return; }
+    setError('');
+    onAdd(selected);
   };
 
   return (
@@ -40,11 +70,13 @@ function ImageUploadSlot({
       <p className="text-sm font-semibold text-slate-700 mb-1">{label}</p>
       <p className="text-xs text-slate-500 mb-3">{hint}</p>
 
-      {/* Preview grid */}
       {files.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3">
           {files.map((file, i) => (
-            <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 flex-shrink-0">
+            <div
+              key={i}
+              className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 flex-shrink-0"
+            >
               <img
                 src={URL.createObjectURL(file)}
                 alt={file.name}
@@ -62,22 +94,34 @@ function ImageUploadSlot({
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        className="flex items-center gap-2 text-sm bg-slate-100 hover:bg-slate-200 border border-slate-200 border-dashed rounded-xl px-4 py-3 text-slate-600 transition-colors w-full justify-center"
-      >
-        <Camera className="w-4 h-4" />
-        {files.length > 0 ? 'إضافة صورة أخرى' : 'ارفع صورة'}
-      </button>
+      {files.length < MAX_IMAGES && (
+        <button
+          type="button"
+          onClick={() => { setError(''); inputRef.current?.click(); }}
+          className="flex items-center gap-2 text-sm bg-slate-100 hover:bg-slate-200 border border-slate-200 border-dashed rounded-xl px-4 py-3 text-slate-600 transition-colors w-full justify-center"
+        >
+          <Camera className="w-4 h-4" />
+          {files.length > 0 ? 'إضافة صورة أخرى' : 'ارفع صورة'}
+        </button>
+      )}
+
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept=".jpg,.jpeg,.png,.webp"
         multiple
         className="hidden"
         onChange={handleChange}
       />
+
+      {error && (
+        <p className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          {error}
+        </p>
+      )}
+      <p className="mt-1.5 text-xs text-slate-400">
+        JPG, PNG, WEBP — حتى 5MB لكل صورة — {MAX_IMAGES} صور كحد أقصى لكل حقل
+      </p>
     </div>
   );
 }
@@ -91,6 +135,7 @@ function QuoteContent() {
   const [submitting, setSubmitting] = useState(false);
   const [requestId, setRequestId] = useState('');
   const [apiError, setApiError] = useState('');
+  const [uploadedCount, setUploadedCount] = useState(0);
 
   const [form, setForm] = useState({
     customerName: '',
@@ -127,6 +172,11 @@ function QuoteContent() {
     setApiError('');
 
     try {
+      const [uploadedPart, uploadedNameplate] = await Promise.all([
+        uploadFiles(partImages),
+        uploadFiles(nameplateImages),
+      ]);
+
       const res = await fetch('/api/quote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -145,26 +195,26 @@ function QuoteContent() {
           faultDescription: form.faultDescription,
           symptoms: [],
           notes: form.notes,
-          imageNames: partImages.map((f) => f.name),
-          nameplateImageNames: nameplateImages.map((f) => f.name),
+          images: uploadedPart,
+          nameplateImages: uploadedNameplate,
         }),
       });
 
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        if (data.errors) {
-          setErrors(data.errors);
-        } else {
-          setApiError(data.error ?? 'حدث خطأ، حاول مجدداً');
-        }
+        if (data.errors) setErrors(data.errors);
+        else setApiError(data.error ?? 'حدث خطأ، حاول مجدداً');
         return;
       }
 
+      setUploadedCount(uploadedPart.length + uploadedNameplate.length);
       setRequestId(data.requestId);
       setStep('success');
-    } catch {
-      setApiError('تعذّر الاتصال بالخادم، تحقق من اتصالك وحاول مجدداً');
+    } catch (err) {
+      setApiError(
+        err instanceof Error ? err.message : 'تعذّر الاتصال بالخادم، تحقق من اتصالك وحاول مجدداً',
+      );
     } finally {
       setSubmitting(false);
     }
@@ -182,7 +232,6 @@ function QuoteContent() {
           </div>
           <h2 className="text-2xl font-extrabold text-slate-900 mb-2">تم استلام طلبك!</h2>
 
-          {/* Request ID */}
           <div className="bg-brand-50 border border-brand-200 rounded-xl px-4 py-3 mb-4 inline-block">
             <p className="text-xs text-brand-600 mb-0.5">رقم طلبك</p>
             <p className="font-mono font-bold text-brand-900 text-lg tracking-widest">{requestId}</p>
@@ -194,22 +243,19 @@ function QuoteContent() {
             <strong dir="ltr" className="inline-block">{form.phone}</strong> في أقرب وقت ممكن.
           </p>
 
-          {(partImages.length > 0 || nameplateImages.length > 0) && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-sm text-amber-800 text-right">
-              <strong>ملاحظة بشأن الصور:</strong> تم تسجيل أسماء الصور ({partImages.length + nameplateImages.length} صورة).
-              احتفظ بها لإرسالها عند طلبها منك.
+          {uploadedCount > 0 && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 text-sm text-green-800 text-right">
+              ✓ تم رفع {uploadedCount} {uploadedCount === 1 ? 'صورة' : 'صور'} بنجاح وإرفاقها بطلبك.
             </div>
           )}
 
-          <div className="flex flex-col gap-3">
-            <Link
-              href="/parts"
-              className="flex items-center justify-center gap-2 bg-brand-900 hover:bg-brand-800 text-white font-bold px-4 py-3 rounded-xl transition-colors"
-            >
-              <ArrowRight className="w-4 h-4" />
-              العودة للكتالوج
-            </Link>
-          </div>
+          <Link
+            href="/parts"
+            className="flex items-center justify-center gap-2 bg-brand-900 hover:bg-brand-800 text-white font-bold px-4 py-3 rounded-xl transition-colors"
+          >
+            <ArrowRight className="w-4 h-4" />
+            العودة للكتالوج
+          </Link>
         </div>
       </div>
     );
@@ -241,7 +287,9 @@ function QuoteContent() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">الاسم <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                الاسم <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 value={form.customerName}
@@ -252,7 +300,9 @@ function QuoteContent() {
               {errors.customerName && <p className="text-xs text-red-500 mt-1">{errors.customerName}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">رقم الهاتف / واتساب <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                رقم الهاتف / واتساب <span className="text-red-500">*</span>
+              </label>
               <input
                 type="tel"
                 value={form.phone}
@@ -266,7 +316,9 @@ function QuoteContent() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">المدينة <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              المدينة <span className="text-red-500">*</span>
+            </label>
             <select
               value={form.city}
               onChange={(e) => set('city', e.target.value)}
@@ -413,14 +465,12 @@ function QuoteContent() {
           />
         </div>
 
-        {/* API error */}
         {apiError && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700 text-center">
             {apiError}
           </div>
         )}
 
-        {/* Submit */}
         <button
           type="submit"
           disabled={submitting}

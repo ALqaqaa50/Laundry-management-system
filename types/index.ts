@@ -1,3 +1,12 @@
+export interface ImageMeta {
+  originalName: string;
+  storedName: string;
+  url: string;
+  size: number;
+  type: string;
+  uploadedAt: string;
+}
+
 export type DeviceType =
   | 'washer-extractor'
   | 'tumble-dryer'

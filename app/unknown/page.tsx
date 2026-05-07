@@ -4,12 +4,17 @@ import { useState, useRef } from 'react';
 import Link from 'next/link';
 import {
   Camera, ChevronLeft, ChevronRight, Check, X, Phone,
-  Cpu, Wrench, Zap, Waves, ThermometerSun, Shield
+  Cpu, Wrench, Zap, Waves, ThermometerSun, Shield,
 } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { DEVICE_LABELS, DeviceType } from '@/types';
+import { DEVICE_LABELS, DeviceType, ImageMeta } from '@/types';
 import { COMMON_SYMPTOMS } from '@/data/parts';
+
+const MAX_IMAGES = 5;
+const MAX_SIZE = 5 * 1024 * 1024;
+const ALLOWED_MIME = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const ALLOWED_EXT = ['jpg', 'jpeg', 'png', 'webp'];
 
 const deviceTypes = Object.keys(DEVICE_LABELS) as DeviceType[];
 
@@ -30,6 +35,31 @@ const STEPS = [
   { id: 5, title: 'بياناتك' },
 ];
 
+const CITIES = ['مسقط', 'صلالة', 'صحار', 'نزوى', 'صور', 'عبري', 'البريمي', 'الرستاق', 'أخرى'];
+
+function validateFiles(incoming: File[], existing: File[]): string | null {
+  if (existing.length + incoming.length > MAX_IMAGES)
+    return `لا يمكن إضافة أكثر من ${MAX_IMAGES} صور`;
+  for (const f of incoming) {
+    const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
+    if (!ALLOWED_MIME.includes(f.type) || !ALLOWED_EXT.includes(ext))
+      return `نوع الملف "${f.name}" غير مسموح. الأنواع المقبولة: JPG, JPEG, PNG, WEBP`;
+    if (f.size > MAX_SIZE)
+      return `حجم الصورة "${f.name}" يتجاوز الحد الأقصى (5MB)`;
+  }
+  return null;
+}
+
+async function uploadFiles(files: File[]): Promise<ImageMeta[]> {
+  if (files.length === 0) return [];
+  const fd = new FormData();
+  files.forEach((f) => fd.append('files', f));
+  const res = await fetch('/api/upload', { method: 'POST', body: fd });
+  const data = await res.json();
+  if (!res.ok || !data.success) throw new Error(data.error ?? 'فشل رفع الصور');
+  return data.files as ImageMeta[];
+}
+
 function ImageUpload({
   label,
   hint,
@@ -44,10 +74,13 @@ function ImageUpload({
   onRemove: (i: number) => void;
 }) {
   const ref = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState('');
+
   return (
     <div>
       <p className="font-semibold text-slate-800 mb-1">{label}</p>
       <p className="text-sm text-slate-500 mb-4">{hint}</p>
+
       {files.length > 0 && (
         <div className="flex flex-wrap gap-3 mb-4">
           {files.map((f, i) => (
@@ -64,31 +97,44 @@ function ImageUpload({
           ))}
         </div>
       )}
-      <button
-        type="button"
-        onClick={() => ref.current?.click()}
-        className="w-full border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-2xl py-8 flex flex-col items-center gap-3 text-slate-500 hover:text-brand-600 transition-colors"
-      >
-        <Camera className="w-8 h-8" />
-        <span className="font-medium">{files.length > 0 ? 'إضافة صورة أخرى' : 'اضغط لرفع صورة'}</span>
-        <span className="text-xs text-slate-400">JPG, PNG — حتى 10MB</span>
-      </button>
+
+      {files.length < MAX_IMAGES && (
+        <button
+          type="button"
+          onClick={() => { setError(''); ref.current?.click(); }}
+          className="w-full border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-2xl py-8 flex flex-col items-center gap-3 text-slate-500 hover:text-brand-600 transition-colors"
+        >
+          <Camera className="w-8 h-8" />
+          <span className="font-medium">{files.length > 0 ? 'إضافة صورة أخرى' : 'اضغط لرفع صورة'}</span>
+          <span className="text-xs text-slate-400">JPG, PNG, WEBP — حتى 5MB — {MAX_IMAGES} صور كحد أقصى</span>
+        </button>
+      )}
+
       <input
         ref={ref}
         type="file"
-        accept="image/*"
+        accept=".jpg,.jpeg,.png,.webp"
         multiple
         className="hidden"
         onChange={(e) => {
-          onAdd(Array.from(e.target.files ?? []));
+          const selected = Array.from(e.target.files ?? []);
           if (ref.current) ref.current.value = '';
+          if (selected.length === 0) return;
+          const err = validateFiles(selected, files);
+          if (err) { setError(err); return; }
+          setError('');
+          onAdd(selected);
         }}
       />
+
+      {error && (
+        <p className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
-
-const CITIES = ['مسقط', 'صلالة', 'صحار', 'نزوى', 'صور', 'عبري', 'البريمي', 'الرستاق', 'أخرى'];
 
 export default function UnknownPartPage() {
   const [step, setStep] = useState(1);
@@ -104,15 +150,15 @@ export default function UnknownPartPage() {
   const [city, setCity] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [requestId, setRequestId] = useState('');
+  const [uploadedCount, setUploadedCount] = useState(0);
   const [apiError, setApiError] = useState('');
 
   const toggleSymptom = (s: string) =>
     setSelectedSymptoms((prev) =>
-      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
+      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s],
     );
 
   const canNext = () => {
-    if (step === 1) return true; // device type is optional
     if (step === 4) return faultText.trim().length > 0 || selectedSymptoms.length > 0;
     if (step === 5) return name.trim() && phone.trim();
     return true;
@@ -123,6 +169,11 @@ export default function UnknownPartPage() {
     setApiError('');
 
     try {
+      const [uploadedPart, uploadedNameplate] = await Promise.all([
+        uploadFiles(partImages),
+        uploadFiles(nameplateImages),
+      ]);
+
       const res = await fetch('/api/quote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -141,8 +192,8 @@ export default function UnknownPartPage() {
           faultDescription: faultText,
           symptoms: selectedSymptoms,
           notes: null,
-          imageNames: partImages.map((f) => f.name),
-          nameplateImageNames: nameplateImages.map((f) => f.name),
+          images: uploadedPart,
+          nameplateImages: uploadedNameplate,
         }),
       });
 
@@ -153,10 +204,13 @@ export default function UnknownPartPage() {
         return;
       }
 
+      setUploadedCount(uploadedPart.length + uploadedNameplate.length);
       setRequestId(data.requestId);
       setDone(true);
-    } catch {
-      setApiError('تعذّر الاتصال بالخادم، تحقق من اتصالك وحاول مجدداً');
+    } catch (err) {
+      setApiError(
+        err instanceof Error ? err.message : 'تعذّر الاتصال بالخادم، تحقق من اتصالك وحاول مجدداً',
+      );
     } finally {
       setSubmitting(false);
     }
@@ -173,7 +227,6 @@ export default function UnknownPartPage() {
             </div>
             <h2 className="text-2xl font-extrabold text-slate-900 mb-2">شكراً!</h2>
 
-            {/* Request ID */}
             <div className="bg-brand-50 border border-brand-200 rounded-xl px-4 py-3 mb-4 inline-block">
               <p className="text-xs text-brand-600 mb-0.5">رقم طلبك</p>
               <p className="font-mono font-bold text-brand-900 text-lg tracking-widest">{requestId}</p>
@@ -184,9 +237,9 @@ export default function UnknownPartPage() {
               <strong dir="ltr" className="inline-block">{phone}</strong> لتحديد القطعة المناسبة.
             </p>
 
-            {(partImages.length > 0 || nameplateImages.length > 0) && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-sm text-amber-800 text-right">
-                تم تسجيل ({partImages.length + nameplateImages.length}) صورة. احتفظ بها لإرسالها عند الطلب.
+            {uploadedCount > 0 && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-3 mb-4 text-sm text-green-800 text-right">
+                ✓ تم رفع {uploadedCount} {uploadedCount === 1 ? 'صورة' : 'صور'} بنجاح وإرفاقها بطلبك.
               </div>
             )}
 
@@ -215,7 +268,6 @@ export default function UnknownPartPage() {
     <>
       <Header />
       <main className="max-w-2xl mx-auto px-4 py-8">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-slate-900">لا أعرف اسم القطعة</h1>
           <p className="text-slate-500 text-sm mt-1">
@@ -387,13 +439,13 @@ export default function UnknownPartPage() {
                 {selectedSymptoms.length > 0 && (
                   <p>الأعطال المحددة: <strong>{selectedSymptoms.join('، ')}</strong></p>
                 )}
-                {faultText && <p>وصف إضافي: <strong>{faultText.slice(0, 80)}...</strong></p>}
+                {faultText && <p>وصف إضافي: <strong>{faultText.slice(0, 80)}{faultText.length > 80 ? '...' : ''}</strong></p>}
               </div>
             </div>
           )}
         </div>
 
-        {/* Navigation buttons */}
+        {/* Navigation */}
         <div className="flex items-center justify-between">
           <button
             type="button"
@@ -436,14 +488,12 @@ export default function UnknownPartPage() {
           )}
         </div>
 
-        {/* API error */}
         {apiError && (
           <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700 text-center">
             {apiError}
           </div>
         )}
 
-        {/* Skip to catalog */}
         <div className="text-center mt-6">
           <p className="text-sm text-slate-500">
             أو{' '}
