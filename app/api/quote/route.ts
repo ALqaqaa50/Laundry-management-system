@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 import type { ImageMeta } from '@/types';
+import { sendNewRequestEmail } from '@/lib/mailer';
 
 const DATA_FILE = path.join(process.cwd(), 'data', 'quote-requests.json');
 
@@ -126,6 +127,11 @@ export async function POST(req: NextRequest) {
       { status: 500 },
     );
   }
+
+  // Fire-and-forget — email failure must never block the user response
+  sendNewRequestEmail(record).catch((err) => {
+    console.error('[mailer] Failed to send notification for', record.requestId, err?.message ?? err);
+  });
 
   return NextResponse.json({ success: true, requestId: record.requestId }, { status: 201 });
 }
