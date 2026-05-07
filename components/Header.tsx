@@ -26,7 +26,7 @@ export default function Header() {
           <Link href="/parts" className="text-brand-200 hover:text-white transition-colors">
             الكتالوج
           </Link>
-          <Link href="/parts?filter=symptoms" className="text-brand-200 hover:text-white transition-colors">
+          <Link href="/parts" className="text-brand-200 hover:text-white transition-colors">
             بحث بالعطل
           </Link>
           <Link href="/unknown" className="text-brand-200 hover:text-white transition-colors">
@@ -59,7 +59,7 @@ export default function Header() {
           <Link href="/parts" className="text-brand-200 hover:text-white py-2" onClick={() => setOpen(false)}>
             الكتالوج
           </Link>
-          <Link href="/parts?filter=symptoms" className="text-brand-200 hover:text-white py-2" onClick={() => setOpen(false)}>
+          <Link href="/parts" className="text-brand-200 hover:text-white py-2" onClick={() => setOpen(false)}>
             بحث بالعطل
           </Link>
           <Link href="/unknown" className="text-brand-200 hover:text-white py-2" onClick={() => setOpen(false)}>

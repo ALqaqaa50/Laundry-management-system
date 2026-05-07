@@ -1,15 +1,9 @@
-// ⚠️ WARNING: This page has NO authentication.
-// Before any public or staging deployment, protect this route with:
-// - Next.js middleware (e.g., NextAuth, Clerk, or a simple token check)
-// - Or restrict via server/proxy (e.g., Azure App Service auth, IP allowlist)
-// Leaving it open exposes all customer data.
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import {
-  Search, RefreshCcw, AlertTriangle, ChevronDown,
+  Search, RefreshCcw, ChevronDown, LogOut,
   Package, Clock, CheckCircle, Loader2, X, ArrowRight,
   Inbox, Filter,
 } from 'lucide-react';
@@ -131,6 +125,10 @@ function StatusSelect({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: next }),
       });
+      if (res.status === 401) {
+        window.location.href = '/admin/login';
+        return;
+      }
       const data = await res.json();
       if (!res.ok || !data.success) {
         setError(data.error ?? 'خطأ في التحديث');
@@ -205,6 +203,10 @@ export default function AdminRequestsPage() {
     setFetchError('');
     try {
       const res = await fetch('/api/quote');
+      if (res.status === 401) {
+        window.location.href = '/admin/login';
+        return;
+      }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'خطأ');
       // Sort newest first
@@ -278,14 +280,6 @@ export default function AdminRequestsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50" dir="rtl">
-      {/* ── Security warning banner ─────────────────────────── */}
-      <div className="bg-red-600 text-white px-4 py-2 text-center text-sm flex items-center justify-center gap-2">
-        <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-        <span>
-          <strong>تحذير:</strong> هذه الصفحة غير محمية بكلمة مرور — يجب إضافة حماية قبل أي نشر عام
-        </span>
-      </div>
-
       {/* ── Header ────────────────────────────────────────────── */}
       <header className="bg-brand-950 text-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -296,17 +290,30 @@ export default function AdminRequestsPage() {
           <span className="text-brand-600">›</span>
           <h1 className="font-bold">لوحة إدارة الطلبات</h1>
         </div>
-        <button
-          onClick={fetchRecords}
-          disabled={loading}
-          className="flex items-center gap-1.5 text-brand-300 hover:text-white text-xs transition-colors disabled:opacity-50"
-          title="تحديث"
-        >
-          <RefreshCcw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          <span className="hidden sm:inline">
-            آخر تحديث: {lastRefresh.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
-          </span>
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={fetchRecords}
+            disabled={loading}
+            className="flex items-center gap-1.5 text-brand-300 hover:text-white text-xs transition-colors disabled:opacity-50"
+            title="تحديث"
+          >
+            <RefreshCcw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">
+              آخر تحديث: {lastRefresh.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </button>
+          <button
+            onClick={async () => {
+              await fetch('/api/admin/logout', { method: 'POST' });
+              window.location.href = '/admin/login';
+            }}
+            className="flex items-center gap-1.5 text-brand-300 hover:text-white text-xs transition-colors"
+            title="خروج"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">خروج</span>
+          </button>
+        </div>
       </header>
 
       <main className="max-w-screen-xl mx-auto px-4 py-6 space-y-6">
