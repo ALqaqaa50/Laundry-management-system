@@ -639,63 +639,75 @@ function RequestRow({
               )}
 
               {/* Image thumbnails */}
-              {(record.images.length > 0 || record.nameplateImages.length > 0) && (
-                <div className="lg:col-span-3">
-                  <p className="font-semibold text-slate-600 mb-2">الصور المرفوعة</p>
-                  {record.images.length > 0 && (
-                    <div className="mb-3">
-                      <p className="text-xs text-slate-500 mb-2">
-                        صور القطعة ({record.images.length})
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {record.images.map((img, i) => (
-                          <a
-                            key={i}
-                            href={img.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={img.originalName}
-                            className="flex-shrink-0"
-                          >
-                            <img
-                              src={img.url}
-                              alt={img.originalName}
-                              className="w-20 h-20 object-cover rounded-lg border border-slate-200 hover:border-brand-400 transition-colors"
-                              loading="lazy"
-                            />
-                          </a>
-                        ))}
+              <div className="lg:col-span-3">
+                <p className="font-semibold text-slate-600 mb-2">الصور المرفقة</p>
+                {record.images.length === 0 && record.nameplateImages.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic bg-white border border-slate-200 rounded-lg px-3 py-2">
+                    لا توجد صور مرفقة بهذا الطلب
+                  </p>
+                ) : (
+                  <>
+                    {record.images.length > 0 && (
+                      <div className="mb-4">
+                        <p className="text-xs font-medium text-slate-500 mb-2">
+                          📷 صور القطعة ({record.images.length})
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {record.images.map((img, i) => (
+                            <a
+                              key={i}
+                              href={img.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={`فتح: ${img.originalName}`}
+                              className="flex-shrink-0 group relative"
+                            >
+                              <img
+                                src={img.url}
+                                alt={img.originalName}
+                                className="w-24 h-24 object-cover rounded-xl border-2 border-slate-200 group-hover:border-brand-400 transition-colors"
+                                loading="lazy"
+                              />
+                              <span className="absolute bottom-1 right-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                فتح
+                              </span>
+                            </a>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  {record.nameplateImages.length > 0 && (
-                    <div>
-                      <p className="text-xs text-slate-500 mb-2">
-                        صور لوحة البيانات ({record.nameplateImages.length})
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {record.nameplateImages.map((img, i) => (
-                          <a
-                            key={i}
-                            href={img.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={img.originalName}
-                            className="flex-shrink-0"
-                          >
-                            <img
-                              src={img.url}
-                              alt={img.originalName}
-                              className="w-20 h-20 object-cover rounded-lg border border-slate-200 hover:border-brand-400 transition-colors"
-                              loading="lazy"
-                            />
-                          </a>
-                        ))}
+                    )}
+                    {record.nameplateImages.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-slate-500 mb-2">
+                          🏷️ صور لوحة البيانات ({record.nameplateImages.length})
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {record.nameplateImages.map((img, i) => (
+                            <a
+                              key={i}
+                              href={img.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={`فتح: ${img.originalName}`}
+                              className="flex-shrink-0 group relative"
+                            >
+                              <img
+                                src={img.url}
+                                alt={img.originalName}
+                                className="w-24 h-24 object-cover rounded-xl border-2 border-slate-200 group-hover:border-brand-400 transition-colors"
+                                loading="lazy"
+                              />
+                              <span className="absolute bottom-1 right-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                فتح
+                              </span>
+                            </a>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              )}
+                    )}
+                  </>
+                )}
+              </div>
 
               {/* Metadata */}
               <div className="text-slate-400 space-y-0.5">

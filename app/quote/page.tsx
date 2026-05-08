@@ -270,6 +270,14 @@ function QuoteContent() {
         </p>
       </div>
 
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex gap-3">
+        <span className="text-amber-500 text-lg flex-shrink-0">💡</span>
+        <p className="text-sm text-amber-800 leading-relaxed">
+          <strong>كلما زادت التفاصيل والصور، زادت فرصة تحديد القطعة الصحيحة بسرعة.</strong>
+          {' '}البراند والموديل ورقم القطعة يختصران وقت البحث كثيراً.
+        </p>
+      </div>
+
       {prefillPartId && (
         <div className="bg-brand-50 border border-brand-200 rounded-xl p-4 mb-6 flex items-center gap-3">
           <FileText className="w-5 h-5 text-brand-600 flex-shrink-0" />
@@ -436,9 +444,16 @@ function QuoteContent() {
             الصور (اختياري ولكن مفيد جداً)
           </h2>
 
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-600 space-y-1 mb-2">
+            <p className="font-semibold text-slate-700 mb-1.5">الصور المفيدة لتحديد القطعة:</p>
+            <p>• <strong>صورة القطعة القديمة</strong> — من أكثر من زاوية إن أمكن</p>
+            <p>• <strong>صورة مكان تركيب القطعة</strong> داخل الجهاز</p>
+            <p>• <strong>صورة لوحة بيانات الماكينة</strong> — تحتوي على البراند والموديل</p>
+          </div>
+
           <ImageUploadSlot
             label="صورة القطعة القديمة أو المعطوبة"
-            hint="ارفع صورة واضحة للقطعة من أكثر من زاوية إن أمكن"
+            hint="ارفع صورة واضحة من أكثر من زاوية إن أمكن"
             files={partImages}
             onAdd={(f) => setPartImages((prev) => [...prev, ...f])}
             onRemove={(i) => setPartImages((prev) => prev.filter((_, idx) => idx !== i))}
@@ -446,7 +461,7 @@ function QuoteContent() {
 
           <ImageUploadSlot
             label="صورة لوحة بيانات الماكينة (Nameplate)"
-            hint="اللوحة المعدنية التي تحتوي على البراند والموديل والسيريال"
+            hint="اللوحة المعدنية أو الملصق الذي يحتوي على البراند والموديل والسيريال — عادةً على جانب أو خلف الجهاز"
             files={nameplateImages}
             onAdd={(f) => setNameplateImages((prev) => [...prev, ...f])}
             onRemove={(i) => setNameplateImages((prev) => prev.filter((_, idx) => idx !== i))}

@@ -4,7 +4,7 @@ import { useState, useRef } from 'react';
 import Link from 'next/link';
 import {
   Camera, ChevronLeft, ChevronRight, Check, X, Phone,
-  Cpu, Wrench, Zap, Waves, ThermometerSun, Shield,
+  Cpu, Wrench, Zap, Waves, ThermometerSun, Shield, HelpCircle,
 } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -140,7 +140,7 @@ export default function UnknownPartPage() {
   const [step, setStep] = useState(1);
   const [done, setDone] = useState(false);
 
-  const [deviceType, setDeviceType] = useState<DeviceType | ''>('');
+  const [deviceType, setDeviceType] = useState<DeviceType | 'unknown' | ''>('');
   const [partImages, setPartImages] = useState<File[]>([]);
   const [nameplateImages, setNameplateImages] = useState<File[]>([]);
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
@@ -182,7 +182,7 @@ export default function UnknownPartPage() {
           customerName: name,
           phone,
           city,
-          deviceType: deviceType || null,
+          deviceType: (deviceType && deviceType !== 'unknown') ? deviceType : null,
           deviceBrand: null,
           deviceModel: null,
           partId: null,
@@ -320,7 +320,26 @@ export default function UnknownPartPage() {
                     {DEVICE_LABELS[d]}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => setDeviceType(deviceType === 'unknown' ? '' : 'unknown')}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all text-sm font-medium ${
+                    deviceType === 'unknown'
+                      ? 'border-brand-600 bg-brand-50 text-brand-800'
+                      : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                  }`}
+                >
+                  <span className={deviceType === 'unknown' ? 'text-brand-600' : 'text-slate-400'}>
+                    <HelpCircle className="w-7 h-7" />
+                  </span>
+                  لا أعرف نوع الجهاز
+                </button>
               </div>
+              {deviceType === 'unknown' && (
+                <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
+                  لا مشكلة — ارفع صورة الجهاز أو لوحة البيانات في الخطوات التالية وسنساعدك على تحديد النوع.
+                </div>
+              )}
               {!deviceType && (
                 <p className="text-xs text-slate-400 mt-4 text-center">
                   يمكنك المتابعة بدون اختيار — سنسألك لاحقاً
@@ -433,7 +452,7 @@ export default function UnknownPartPage() {
               {/* Summary */}
               <div className="mt-6 bg-slate-50 rounded-xl p-4 text-sm space-y-2 text-slate-600">
                 <p className="font-semibold text-slate-800 mb-2">ملخص طلبك:</p>
-                {deviceType && <p>نوع الجهاز: <strong>{DEVICE_LABELS[deviceType]}</strong></p>}
+                {deviceType && <p>نوع الجهاز: <strong>{deviceType === 'unknown' ? 'غير معروف' : DEVICE_LABELS[deviceType as DeviceType]}</strong></p>}
                 {partImages.length > 0 && <p>صور القطعة: <strong>{partImages.length} صورة</strong></p>}
                 {nameplateImages.length > 0 && <p>صور لوحة الجهاز: <strong>{nameplateImages.length} صورة</strong></p>}
                 {selectedSymptoms.length > 0 && (

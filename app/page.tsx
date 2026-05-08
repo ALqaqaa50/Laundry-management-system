@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Search, ArrowLeft, HelpCircle, Zap, CheckCircle, Users, Package
+  Search, ArrowLeft, HelpCircle, Zap, CheckCircle, Users, Package, ShieldCheck
 } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -121,7 +121,7 @@ export default function HomePage() {
         <section className="bg-white border-b border-slate-100 py-6 px-4">
           <div className="max-w-4xl mx-auto grid grid-cols-3 gap-4 text-center">
             {[
-              { icon: Package, value: `${parts.length}+`, label: 'قطعة موثقة' },
+              { icon: Package, value: `${parts.length}+`, label: 'قطعة في الكتالوج' },
               { icon: Users, value: '15+', label: 'براند متوافق' },
               { icon: CheckCircle, value: '12', label: 'تصنيف متخصص' },
             ].map(({ icon: Icon, value, label }) => (
@@ -196,6 +196,52 @@ export default function HomePage() {
                 </div>
               );
             })}
+          </div>
+        </section>
+
+        {/* ── Trust / Error Reduction ────────────────────────── */}
+        <section className="bg-slate-50 border-y border-slate-100 py-12 px-4">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-xl font-bold text-slate-900 mb-2 flex items-center gap-2">
+              <span className="w-1 h-6 bg-accent-500 rounded-full inline-block" />
+              كيف نقلل خطأ اختيار القطعة؟
+            </h2>
+            <p className="text-slate-500 text-sm mb-6">
+              لا يمكن ضمان التطابق الكامل دون التحقق الميداني، لكن نتبع خطوات تقلل الاحتمال الخاطئ:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                {
+                  num: '١',
+                  title: 'مراجعة الصور',
+                  desc: 'نراجع صورة القطعة وصورة لوحة بيانات الماكينة قبل تحديد البديل.',
+                },
+                {
+                  num: '٢',
+                  title: 'مطابقة الجهاز والموديل',
+                  desc: 'نحاول مطابقة القطعة مع نوع الجهاز والموديل قدر ما تتيحه المعلومات المرسلة.',
+                },
+                {
+                  num: '٣',
+                  title: 'تأكيد قبل عرض السعر النهائي',
+                  desc: 'لا نرسل عرض سعر نهائياً قبل التأكد من التفاصيل الأساسية مع العميل.',
+                },
+              ].map((item) => (
+                <div key={item.num} className="bg-white rounded-xl border border-slate-200 p-5 flex gap-4">
+                  <div className="w-8 h-8 rounded-full bg-brand-900 text-white font-bold flex items-center justify-center text-sm flex-shrink-0 mt-0.5">
+                    {item.num}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900 text-sm mb-1">{item.title}</p>
+                    <p className="text-slate-500 text-xs leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-slate-400 mt-4 flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
+              هذه إجراءات عملية وليست ضماناً. بعض القطع تحتاج تحقق ميداني من الفني قبل الطلب.
+            </p>
           </div>
         </section>
 
