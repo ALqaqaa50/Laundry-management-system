@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
 import type { ImageMeta } from '@/types';
 import { sendNewRequestEmail } from '@/lib/mailer';
-
-const DATA_FILE = path.join(process.cwd(), 'data', 'quote-requests.json');
+import {
+  createQuoteRequest,
+  getAllQuoteRequests,
+} from '@/lib/storage/quotes';
 
 export type QuoteStatus =
   | 'new' | 'reviewing' | 'quoted'
@@ -31,19 +31,6 @@ export interface QuoteRecord {
   nameplateImages: ImageMeta[];
   createdAt: string;
   updatedAt?: string;
-}
-
-async function readRecords(): Promise<QuoteRecord[]> {
-  try {
-    const raw = await fs.readFile(DATA_FILE, 'utf-8');
-    return JSON.parse(raw) as QuoteRecord[];
-  } catch {
-    return [];
-  }
-}
-
-async function writeRecords(records: QuoteRecord[]): Promise<void> {
-  await fs.writeFile(DATA_FILE, JSON.stringify(records, null, 2), 'utf-8');
 }
 
 function generateId(): string {
@@ -117,9 +104,7 @@ export async function POST(req: NextRequest) {
   };
 
   try {
-    const records = await readRecords();
-    records.push(record);
-    await writeRecords(records);
+    await createQuoteRequest(record);
   } catch (err) {
     console.error('Failed to save quote request:', err);
     return NextResponse.json(
@@ -137,6 +122,14 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  const records = await readRecords();
-  return NextResponse.json({ total: records.length, records });
+  try {
+    const records = await getAllQuoteRequests();
+    return NextResponse.json({ total: records.length, records });
+  } catch (err) {
+    console.error('[GET /api/quote]', err);
+    return NextResponse.json(
+      { success: false, error: 'خطأ في جلب الطلبات' },
+      { status: 500 },
+    );
+  }
 }
